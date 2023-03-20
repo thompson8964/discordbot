@@ -29,7 +29,7 @@ async def on_message(message):
         try:
             channel_id = r.group(1)
         except:
-            message.channel.send("You did not input a channel that exists in this server.")
+            message.channel.send("You did not input a channel that exists in this server.") #todo test if this works
 
         channel = client.get_channel(int(channel_id))
 
@@ -40,7 +40,7 @@ async def on_message(message):
         for i in messages:
             print(i.content)
     if message.content.lower().startswith("/chatbot "):
-        #async with message.typing():
+        #async with message.typing(): #todo make bot type in real time or show that bot is typing
         content = message.content.removeprefix("/chatbot ")
         await message.channel.send(gptbot(content))
 
