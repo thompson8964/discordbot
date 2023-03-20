@@ -35,7 +35,7 @@ async def on_message(message):
 
         print(channel)
 
-        messages = await channel.history(limit=50).flatten()
+        messages = await channel.history(limit=50).flatten() #todo this part does not work??? Flatten does not work????
         print(messages)
         for i in messages:
             print(i.content)
