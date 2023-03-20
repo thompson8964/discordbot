@@ -1,7 +1,10 @@
 from gpt import gptbot
 import discord
+from discord.ext.commands import Bot
 import toml
+import re
 
+ids ={"#general": "1081639868423221278"}
 intents = discord.Intents.all()
 client = discord.Client(command_prefix='!', intents=intents)
 
@@ -19,10 +22,23 @@ async def on_ready():
 async def on_message(message):
     if message.author == client.user:
         return
+    if message.content.lower().startswith("/summarize "):
+        content = message.content.removeprefix("/summarize ")
+        content = content.split()
+        r = re.search("\<\#(\d+)\>", content[0])
+        try:
+            channel_id = r.group(1)
+        except:
+            message.channel.send("You did not input a channel that exists in this server.")
 
-    if message.content.startswith('hi'):
-        await message.channel.send('Hello!')
+        channel = client.get_channel(int(channel_id))
 
+        print(channel)
+
+        messages = await channel.history(limit=50).flatten()
+        print(messages)
+        for i in messages:
+            print(i.content)
     if message.content.lower().startswith("/chatbot "):
         #async with message.typing():
         content = message.content.removeprefix("/chatbot ")
