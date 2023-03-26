@@ -1,6 +1,7 @@
 import toml
-data = {"gptkey":"YOURCODE",
-        "serverkey": "SERVERCODE"
+data = {"gptkey":"YOURKEY",
+        "serverkey": "YOURCODE",
+        "exitKey": "YOURPASSWORD"
         }
 
 with open('config.toml', 'w') as f:

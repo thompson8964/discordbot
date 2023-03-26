@@ -3,6 +3,7 @@ import discord
 from discord.ext.commands import Bot
 import toml
 import re
+import sys
 
 ids ={"#general": "1081639868423221278"}
 intents = discord.Intents.all()
@@ -23,6 +24,7 @@ async def on_message(message):
     if message.author == client.user:
         return
     if message.content.lower().startswith("/summarize "):
+        history = ""
         content = message.content.removeprefix("/summarize ")
         content = content.split()
         r = re.search("\<\#(\d+)\>", content[0])
@@ -35,14 +37,31 @@ async def on_message(message):
 
         print(channel)
 
-        messages = await channel.history(limit=50).flatten() #todo this part does not work??? Flatten does not work????
+        messages = channel.history(limit=20)#.flatten() #todo this part does not work??? Flatten does not work????
         print(messages)
-        for i in messages:
-            print(i.content)
+        async for i in messages:
+            history += str(i.content)
+
+            #print(i.content)
+        print(history)
+
     if message.content.lower().startswith("/chatbot "):
         #async with message.typing(): #todo make bot type in real time or show that bot is typing
         content = message.content.removeprefix("/chatbot ")
         await message.channel.send(gptbot(content))
+
+
+    if message.author == client.user:
+        return
+    if not message.guild:
+        if message.content.lower().startswith("/exit " + data["exitKey"]):
+            try:
+                await message.channel.send("Shutting down!")
+                sys.exit("Recieved shutdown command.")
+            except discord.errors.Forbidden:
+                pass
+    else:
+        pass
 
 
 client.run(serverkey)
