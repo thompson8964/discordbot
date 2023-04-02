@@ -37,13 +37,15 @@ async def on_message(message):
 
         print(channel)
 
-        messages = channel.history(limit=20)#.flatten() #todo this part does not work??? Flatten does not work????
+        messages = channel.history(limit=20)
         print(messages)
         async for i in messages:
             history += str(i.content)
 
             #print(i.content)
         print(history)
+        ask = "Summarize these messages: " + history
+        await message.channel.send(gptbot(ask))
 
     if message.content.lower().startswith("/chatbot "):
         #async with message.typing(): #todo make bot type in real time or show that bot is typing
