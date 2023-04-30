@@ -13,6 +13,7 @@ def gptbot(userInput):
     print("Chatbot: ")
     output = ""
     prev_text = ""
+    print(f"Userinput: {userInput}")
     for data in chatbot.ask(
         userInput,
     ):
