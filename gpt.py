@@ -1,30 +1,26 @@
 import toml
-from revChatGPT.V1 import Chatbot
+import openai
 
 with open('config.toml', 'r') as f:
     data = toml.load(f)
-key = data['gptkey']
+key = data['openAItoken']
 
-chatbot = Chatbot(config=
-{
-  "access_token": key
-})
+#openai.organization = "org-P11Velr3yd83kB9Ps5PTqei8"
+openai.api_key = key
 def gptbot(userInput):
     print("Chatbot: ")
-    output = ""
-    prev_text = ""
     print(f"Userinput: {userInput}")
-    for data in chatbot.ask(
-        userInput,
-    ):
-        message = data["message"][len(prev_text) :]
-        output += message
-        print(message, end="", flush=True)
-        prev_text = data["message"]
-    print()
-    return output
+
+    completion = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "user", "content": userInput}
+        ]
+    )
+    return completion.choices[0].message.content
 
 
 if __name__ == "__main__":
     bot_message = gptbot("Hello can you hear me?")
     print(f"bot_message: {bot_message}")
+

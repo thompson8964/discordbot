@@ -5,7 +5,10 @@ import toml
 import re
 import sys
 import copy
+import mysql.connector
 import time
+
+
 ids ={"#general": "1081639868423221278"}
 intents = discord.Intents.all()
 # client = discord.BotIntegration(intents=intents)
@@ -15,6 +18,13 @@ with open('config.toml', 'r') as f:
     data = toml.load(f)
 serverkey = data["serverkey"]
 
+
+mydb = mysql.connector.connect(
+  host=data["host"],
+  user=data["dbusername"],
+  password=data["dbpsword"]
+)
+cursor = mydb.cursor()
 @bot.event
 async def on_ready():
     print('We have logged in as {0.user}'.format(bot))
