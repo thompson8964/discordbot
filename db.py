@@ -29,24 +29,27 @@ if __name__ == "__main__":
     print(myresult)
 
 #insert
-    # data = {"timestamp": now.strftime('%Y-%m-%d %H:%M:%S'),
-    #         "user_id": 1,
-    #         "message_content": "a",
-    #         "reply_content":"a",
-    #         "server_id": 1}
-    #
-    # insert_query = "INSERT INTO message_logs (timestamp, user_id, message_content, reply_content, server_id) VALUES (%s, %s, %s, %s, %s)"
-    # cursor.execute(insert_query, (data['timestamp'], data['user_id'], data['message_content'], data["reply_content"], data["server_id"] ))
-    #
+
+    data = {"timestamp": now.strftime('%Y-%m-%d %H:%M:%S'),
+            "user_id": 1,
+            "message_content": "a",
+            "reply_content":"a",
+            "server_id": 1}
+
+    insert_query = "INSERT INTO message_logs (timestamp, user_id, message_content, reply_content, server_id) VALUES (%s, %s, %s, %s, %s)"
+    result = cursor.execute(insert_query, (data['timestamp'], data['user_id'], data['message_content'], data["reply_content"], data["server_id"] ))
+    print(result)
 
 
-    cursor.execute("select * from message_logs where user_id = ;")
+    db.commit()
+    cursor.execute("select * from message_logs;")
     result = cursor.fetchall()
     for row in result:
         print(row)
         print("\n")
+
     db.commit()
-    # close the connection
+    #close the connection
     db.close()
 
 
