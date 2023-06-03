@@ -7,7 +7,10 @@ import sys
 import copy
 import mysql.connector
 import time
+from gtts import gTTS
+import os
 
+from audioFunction import text_to_speech
 
 from datetime import datetime
 
@@ -37,7 +40,15 @@ passw = data["dbpsword"]
 
 @bot.event
 async def on_message(message):
-    id = message.author.id
+    message_content = copy.copy(message.content)
+    if message.author == bot.user:
+        return  # Ignore messages sent by the bot itself
+    if message_content.lower().startswith("/texttospeech "):
+        content = message_content.removeprefix("/texttospeech ")
+        if content:
+            file,path = text_to_speech(content)
+            await message.channel.send(file=file)
+            os.remove(path)
 
 
     with open('config.toml', 'r') as f:
@@ -49,13 +60,37 @@ async def on_message(message):
         password=passw,
         db='discordBotDB',
     )
-    cursor = db.cursor()
+    cursor = db.cursor(buffered=True)
     now = datetime.now()
 
-    message_content = copy.copy(message.content)
+
+    id = message.author.id
+
+    idExists = False
+    query = f"SELECT * FROM user_data WHERE user_id = {id};"
+    cursor.execute(query)
+    rows = cursor.fetchall()
+    print("rows:", rows)
+    user_data = {}
+    if rows:
+        idExists = True
+        user_data = {
+            "user_id": rows[0][0],
+            "pay_info":  rows[0][1],
+            "tokens":  rows[0][2],
+            "requests":  rows[0][3]
+        }
+
+
+
+
+
     if message.author == bot.user:
         return
     if message_content.lower().startswith("/summarize "):
+        if user_data["requests"] <= 0:
+            await message.channel.send("You need more requests!")  #todo test if this works
+            return
         history = ""
         content = message_content.removeprefix("/summarize ")
         content = content.split()
@@ -94,6 +129,10 @@ async def on_message(message):
 
 
     if message_content.lower().startswith("/chatbot "):
+        if user_data["tokens"] <= 0:  #todo test if this works
+            await message.channel.send("You need more tokens!")
+            return
+
         #async with message.typing(): #todo make bot type in real time or show that bot is typing
             content = message_content.removeprefix("/chatbot ")
             reply = gptbot(content)
@@ -117,17 +156,30 @@ async def on_message(message):
             db.commit()
 
             # code for if the user already exists in the database
-            insert_query = f"UPDATE user_data SET user_payment_info={data['user_payment_info']} user_tokens={data['user_tokens']} user_requests={data['user_requests']} WHERE user_id={data['user_id']}"
-            data = {"user_id": id,
-                    'user_payment_info': 0, # placeholder
-                    "user_tokens": 300, #placeholder
-                    "user_requests": 0 } #placeholder
+            print(id)
+            if idExists:
+                data = {"user_id": id,
+                        'user_payment_info': 0, # placeholder
+                        "user_tokens": 300, #placeholder
+                        "user_requests": 0 } #placeholder
+                insert_query = f"UPDATE user_data SET user_payment_info={data['user_payment_info']}, user_tokens={data['user_tokens']}, user_requests={data['user_requests']} WHERE user_id={data['user_id']}"
 
-            cursor.execute(insert_query, (
-                data['user_id'], data['user_payment_info'], data['user_tokens'], data["user_requests"]))
-            db.commit()
+                cursor.execute(insert_query)
+                db.commit()
+            else: #code for new user
+                print("id:", id)
 
-            #todo add code for new user
+                insert_query = f"INSERT INTO user_data (user_id, user_payment_info, user_tokens, user_requests) VALUES (%s, %s, %s, %s)"
+                data = {"user_id": id,
+                        'user_payment_info': 0,  # placeholder
+                        "user_tokens": 299,
+                        "user_requests": 0}  # placeholder
+                print(data)
+                cursor.execute(insert_query, (
+                    data['user_id'], data['user_payment_info'], data['user_tokens'], data["user_requests"]))
+                db.commit()
+
+
 
 
     if message.author == bot.user:
