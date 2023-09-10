@@ -5,33 +5,37 @@ import toml
 import re
 import sys
 import copy
-import mysql.connector
 import time
 from gtts import gTTS
 import os
+import pymongo
 
 from audioFunction import text_to_speech
 
 from datetime import datetime
 
+#pinned post on patreon that tells people they have to verify through email
+#!help command -> "I don't have paid tokens even though i have subscribed" -> check your email to verify, check spam folder
+#/verify 2983748927349872
+#
 
 ids ={"#general": "1081639868423221278"}
 intents = discord.Intents.all()
 # client = discord.BotIntegration(intents=intents)
 bot = commands.Bot(command_prefix="/", intents=intents)
 
-
-
-
-@bot.event
-async def on_ready():
-    print('We have logged in as {0.user}'.format(bot))
-
 with open('config.toml', 'r') as f:
     data = toml.load(f)
-serverkey = data["serverkey"]
+exitKey = data["exitKey"]
 
-passw = data["dbpsword"]
+
+myclient = pymongo.MongoClient(data["mongoAddress"])
+mydb = myclient["chatbotDB"]
+messageLogs = mydb["messageLogs"]
+userData = mydb["userData"]
+
+
+
 
 
 
@@ -51,46 +55,22 @@ async def on_message(message):
             os.remove(path)
 
 
-    with open('config.toml', 'r') as f:
-        data = toml.load(f)
     # To connect MySQL database
-    db = mysql.connector.connect(
-        host=data["host"],
-        user='admin',
-        password=passw,
-        db='discordBotDB',
-    )
-    cursor = db.cursor(buffered=True)
+
+
     now = datetime.now()
 
 
-    id = message.author.id
+    id = str(message.author.id) # convert the discord user id to string for easier querying
 
     idExists = False
-    query = f"SELECT * FROM user_data WHERE user_id = {id};"
-    cursor.execute(query)
-    rows = cursor.fetchall()
-    print("rows:", rows)
-    user_data = {}
-    if rows:
-        idExists = True
-        user_data = {
-            "user_id": rows[0][0],
-            "pay_info":  rows[0][1],
-            "tokens":  rows[0][2],
-            "requests":  rows[0][3]
-        }
 
-
-
-
+    #print("rows:", rows)
 
     if message.author == bot.user:
         return
     if message_content.lower().startswith("/summarize "):
-        if user_data["requests"] <= 0:
-            await message.channel.send("You need more requests!")  #todo test if this works
-            return
+
         history = ""
         content = message_content.removeprefix("/summarize ")
         content = content.split()
@@ -122,62 +102,65 @@ async def on_message(message):
                 "reply_content": reply,
                 "server_id": 1}  # placeholder
 
-        insert_query = "INSERT INTO message_logs (timestamp, user_id, message_content, reply_content, server_id) VALUES (%s, %s, %s, %s, %s)"
-        result = cursor.execute(insert_query, (
-            data['timestamp'], data['user_id'], data['message_content'], data["reply_content"], data["server_id"]))
-        db.commit()
-
 
     if message_content.lower().startswith("/chatbot "):
-        if user_data["tokens"] <= 0:  #todo test if this works
-            await message.channel.send("You need more tokens!")
-            return
+
 
         #async with message.typing(): #todo make bot type in real time or show that bot is typing
-            content = message_content.removeprefix("/chatbot ")
+        content = message_content.removeprefix("/chatbot ")
+
+
+
+        if content:
             reply = gptbot(content)
-            if content:
-                await message.channel.send(reply)
-            else:
-                message.channel.send("You have to ask me a question!")
+            await message.channel.send(reply)
+        else:
+            message.channel.send("You have to ask me a question!")
+
+
+        mydict = {"time": datetime.utcnow(), "content": content, "reply": reply}
+        x = messageLogs.insert_one(mydict)
+        print(reply)
 
 
 
 
-            data = {"timestamp": now.strftime('%Y-%m-%d %H:%M:%S'),
-                    "user_id": id,
-                    "message_content": content,
-                    "reply_content": reply,
-                    "server_id": 1} #placeholder
+        data = {"timestamp": now.strftime('%Y-%m-%d %H:%M:%S'),
+                "user_id": id,
+                "message_content": content,
+                "reply_content": reply,
+                "server_id": 1} #placeholder
 
-            insert_query = "INSERT INTO message_logs (timestamp, user_id, message_content, reply_content, server_id) VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(insert_query, (
-            data['timestamp'], data['user_id'], data['message_content'], data["reply_content"], data["server_id"]))
-            db.commit()
 
-            # code for if the user already exists in the database
-            print(id)
-            if idExists:
-                data = {"user_id": id,
-                        'user_payment_info': 0, # placeholder
-                        "user_tokens": 300, #placeholder
-                        "user_requests": 0 } #placeholder
-                insert_query = f"UPDATE user_data SET user_payment_info={data['user_payment_info']}, user_tokens={data['user_tokens']}, user_requests={data['user_requests']} WHERE user_id={data['user_id']}"
+        # code for if the user already exists in the database
+        print(id)
 
-                cursor.execute(insert_query)
-                db.commit()
-            else: #code for new user
-                print("id:", id)
+        print("id:", id)
 
-                insert_query = f"INSERT INTO user_data (user_id, user_payment_info, user_tokens, user_requests) VALUES (%s, %s, %s, %s)"
-                data = {"user_id": id,
-                        'user_payment_info': 0,  # placeholder
-                        "user_tokens": 299,
-                        "user_requests": 0}  # placeholder
-                print(data)
-                cursor.execute(insert_query, (
-                    data['user_id'], data['user_payment_info'], data['user_tokens'], data["user_requests"]))
-                db.commit()
+        result: dict = userData.find_one({"discordId": id})
+        if result:
+            print("discord id found. updating the tokens")
+
+            result = userData.update_one({"discordId": id}, {"$set": {'tokensLeft': result["tokensLeft"]-1}})
+            print(f"Successfully updated message records: {result.modified_count}")
+
+        else:
+            print("discord id not found")
+            data = {"patreonId": "",
+                    "discordId": id,
+                    "email": "",
+                    "tier": 0,
+                    "verifcode": "",
+                    "tokensLeft": 299,
+                    "requestsLeft": 10,
+                    }
+            result = userData.insert_one(data)
+            print(f"Successfully inserted one record: {result.inserted_id}")
+            print(data)
+
+
+
+
 
 
 
@@ -185,14 +168,47 @@ async def on_message(message):
     if message.author == bot.user:
         return
     if not message.guild:
-        if message_content.lower().startswith("/exit " + data["exitKey"]):
+        if message_content.lower().startswith("/exit " + exitKey):
             try:
                 await message.channel.send("Shutting down!")
                 sys.exit("Recieved shutdown command.")
             except discord.errors.Forbidden:
                 pass
-    else:
-        pass
+
+        elif message_content.lower().startswith("/verify"):
+            content = message_content.removeprefix("/verify ")
 
 
-bot.run(serverkey)
+
+
+        if message_content.lower().startswith("/verify "):
+            id = str(message.author.id)  # convert the discord user id to string for easier querying
+            content = message_content.removeprefix("/verify ")
+            for x in userData.find({"verifcode": content}):  # { "_id": 0,"patreonId":0,"discordId": 0,"email": 0,"tier": 0, "verifcode": 1, "tokensLeft": 0,  "requestsLeft": 0}):
+                if x["verifcode"] == content:
+                    userData.update_one({"verifcode": content}, {"$set": {'discordId': id, "tier": 1, "tokensLeft": 300, "requestsLeft": 0}})
+                    await message.channel.send("You have been successfully verified.")
+                    print("User verified successfully!")
+                    break
+                else:
+                    await message.channel.send("Looks like you entered the wrong code! Make sure you copied the right code and try again.")
+        if message_content.lower().startswith("/checkTokens "):
+            id = str(message.author.id)  # convert the discord user id to string for easier querying
+            content = message_content.removeprefix("/checkTokens ")
+            for x in userData.find({}, {"_id": 0, "patreonId": 0, "discordId": 1, "email": 0, "tier": 0, "verifcode": 0,
+                                        "tokensLeft": 1, "requestsLeft": 1}):
+                if x["discordId"] == id:
+                    await message.channel.send(f"You have {x['tokensLeft']} tokens and {x['requestsLeft']} requests left.")
+                    break
+
+
+
+
+
+
+
+
+
+
+
+bot.run(data["serverkey"])

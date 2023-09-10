@@ -17,42 +17,20 @@ if __name__ == "__main__":
         host=data["host"],
         user='admin',
         password=passw,
-        db='discordBotDB',
+        db='chatbot',
     )
 
     cursor = db.cursor(buffered=True)
 
-    cursor.execute("Show tables;")
+    cursor.execute("SELECT * FROM user_data WHERE user_payment_info=1;")
 
-    myresult = cursor.fetchall()
-
-    #print(myresult)
-
-#insert
-    #
-    # data = {"timestamp": now.strftime('%Y-%m-%d %H:%M:%S'),
-    #         "user_id": 1,
-    #         "message_content": "a",
-    #         "reply_content":"a",
-    #         "server_id": 1}
-    #
-    # insert_query = "INSERT INTO message_logs (timestamp, user_id, message_content, reply_content, server_id) VALUES (%s, %s, %s, %s, %s)"
-    # result = cursor.execute(insert_query, (data['timestamp'], data['user_id'], data['message_content'], data["reply_content"], data["server_id"] ))
-    # print(result)
-    #
-    #
-    # db.commit()
-    # cursor.execute("select * from message_logs;")
-    # result = cursor.fetchall()
-    # for row in result:
-    #     print(row)
-    #     print("\n")
+  #  myresult = cursor.fetchall()
 
 
 
-    query = "SELECT * FROM user_data WHERE user_id =2;"
+    #query = "SELECT * FROM user_data WHERE user_payment_info = 2;"
 
-    cursor.execute(query)
+    #cursor.execute(query)
     rows = cursor.fetchall()
 
     print(rows)
