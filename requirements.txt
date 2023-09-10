@@ -1,3 +1,6 @@
-toml
 discord.py
-revChatGPT
+toml
+openai
+pymongo
+patreon
+gtts
